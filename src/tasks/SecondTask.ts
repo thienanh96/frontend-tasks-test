@@ -1,74 +1,39 @@
 type AsyncFunction<T, U> = (value: T) => Promise<U>;
 
-type Task = {
-  index: number;
-  done?: boolean;
-};
-
-function map<T, U>(
+async function map<T, U>(
   values: T[],
   asyncFn: AsyncFunction<T, U>,
   parallelLimit: number
-): Promise<Array<{ data?: U; error?: Error }>> {
-  const results: { data?: U; error?: Error }[] = [];
+): Promise<Array<U>> {
+  const results: U[] = [];
+  const executing: Promise<void>[] = [];
 
-  const queuedTasks: Task[] = arrayRange(parallelLimit, values.length - 1).map(
-    (index) => ({
-      index,
-    })
-  );
+  async function processItem(item: T, index: number): Promise<void> {
+    const result = await asyncFn(item);
+    results[index] = result;
+  }
 
-  const executingTasks: Task[] = [];
+  for (let i = 0; i < values.length; i++) {
+    const processingPromise = processItem(values[i], i);
 
-  const asyncFnCb = (index: number, data?: U, error?: Error) => {
-    const currentIndex = executingTasks.findIndex((e) => e.index === index);
-
-    if (currentIndex !== -1) {
-      executingTasks[currentIndex].done = true;
-    }
-
-    results[index] = {
-      data,
-      error,
-    };
-
-    if (
-      queuedTasks.length > 0 &&
-      executingTasks.filter((e) => !e.done).length < parallelLimit
-    ) {
-      const queuedTask = queuedTasks.shift()!;
-      callAsyncFn(queuedTask.index);
-    }
-  };
-
-  const callAsyncFn = (index: number) => {
-    executingTasks.push({ index });
-    asyncFn(values[index])
-      .then((result) => {
-        asyncFnCb(index, result);
+    // Push the cleanup operation to the executing array.
+    executing.push(
+      processingPromise.then(() => {
+        // Once a promise completes, remove it from the executing array.
+        executing.splice(executing.indexOf(processingPromise), 1);
       })
-      .catch((error: Error) => {
-        asyncFnCb(index, undefined, error);
-      });
-  };
+    );
 
-  arrayRange(0, Math.min(parallelLimit - 1, values.length - 1)).map((index) =>
-    callAsyncFn(index)
-  );
+    // If we reach the parallelLimit, wait for one of the promises to finish.
+    if (executing.length >= parallelLimit) {
+      await Promise.race(executing);
+    }
+  }
 
-  return new Promise((resolve) => {
-    const interval = setInterval(() => {
-      if (executingTasks.every((e) => e.done)) {
-        clearInterval(interval);
-        resolve(results);
-      }
-    }, 1);
-  });
+  // Wait for all remaining promises to finish.
+  await Promise.all(executing);
+
+  return results;
 }
-
-const arrayRange = (start: number, stop: number) =>
-  start > stop
-    ? []
-    : Array.from({ length: stop - start + 1 }, (_, index) => start + index);
 
 export default map;

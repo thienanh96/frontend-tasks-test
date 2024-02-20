@@ -17,24 +17,7 @@ describe("Second Task - map function", () => {
     const endTime = Date.now();
     const executionTime = endTime - startTime;
 
-    expect(result).toEqual([
-      {
-        data: 2,
-        error: undefined,
-      },
-      {
-        data: 4,
-        error: undefined,
-      },
-      {
-        data: 6,
-        error: undefined,
-      },
-      {
-        data: 8,
-        error: undefined,
-      },
-    ]);
+    expect(result).toEqual([2, 4, 6, 8]);
 
     /**
      * parallelLimit = 3 means [1,2,3] runs in parallel first, after 100ms the 1 done then 4 runs (in parallel with 2 and 3)
@@ -67,28 +50,7 @@ describe("Second Task - map function", () => {
     // The expected time is calculated based on the number of values and parallel limit
     const expectedTime = Math.ceil(values.length / parallelLimit) * 100; // Assuming each asyncFn takes 100ms
 
-    expect(result).toEqual([
-      {
-        data: 2,
-        error: undefined,
-      },
-      {
-        data: 4,
-        error: undefined,
-      },
-      {
-        data: 6,
-        error: undefined,
-      },
-      {
-        data: 8,
-        error: undefined,
-      },
-      {
-        data: 10,
-        error: undefined,
-      },
-    ]);
+    expect(result).toEqual([2, 4, 6, 8, 10]);
     expect(executionTime).toBeLessThanOrEqual(expectedTime + 20); // Allow some margin of error
   });
 
@@ -97,28 +59,7 @@ describe("Second Task - map function", () => {
     const asyncFn = async (x: string) => x.toUpperCase();
     const parallelLimit = 2;
     const result = await map(values, asyncFn, parallelLimit);
-    expect(result).toEqual([
-      {
-        data: "A",
-        error: undefined,
-      },
-      {
-        data: "B",
-        error: undefined,
-      },
-      {
-        data: "C",
-        error: undefined,
-      },
-      {
-        data: "D",
-        error: undefined,
-      },
-      {
-        data: "E",
-        error: undefined,
-      },
-    ]);
+    expect(result).toEqual(["A", "B", "C", "D", "E"]);
   });
 
   it("Should handle empty array", async () => {
@@ -127,41 +68,5 @@ describe("Second Task - map function", () => {
     const parallelLimit = 3;
     const result = await map(values, asyncFn, parallelLimit);
     expect(result).toEqual([]);
-  });
-
-  it("Should handle errors when async function throws errors", async () => {
-    const values = [1, 2, 3, 4, 5];
-
-    const asyncFn = async (x: number) => {
-      if (x % 2 === 0) {
-        throw new Error("Even number failed");
-      }
-
-      return x * 2;
-    };
-    const parallelLimit = 3;
-    const result = await map(values, asyncFn, parallelLimit);
-    expect(result).toEqual([
-      {
-        data: 2,
-        error: undefined,
-      },
-      {
-        data: undefined,
-        error: new Error("Even number failed"),
-      },
-      {
-        data: 6,
-        error: undefined,
-      },
-      {
-        data: undefined,
-        error: new Error("Even number failed"),
-      },
-      {
-        data: 10,
-        error: undefined,
-      },
-    ]);
   });
 });
